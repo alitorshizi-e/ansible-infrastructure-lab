@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Ansible Infrastructure Lab</title>
+</head>
+
+<body>
+    <h1>Ansible Infrastructure Lab</h1>
+
+    <p>Server: {{ inventory_hostname }}</p>
+    <p>System Hostname: {{ ansible_hostname }}</p>
+    <p>IP Address: {{ ansible_default_ipv4.address | default(ansible_host) }}</p>
+    <p>Environment: {{ lab_environment }}</p>
+
+    <p>This server is managed by Ansible.</p>
+</body>
+</html>
