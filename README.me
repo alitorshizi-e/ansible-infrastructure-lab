@@ -1,0 +1,540 @@
+# Ansible Infrastructure Lab
+
+A hands-on Ansible project for automating the configuration and management of Linux servers.
+
+The project is designed as a practical DevOps lab to review and reinforce Ansible fundamentals through a realistic multi-server infrastructure automation scenario.
+
+## Project Scenario
+
+A DevOps engineer is responsible for preparing and maintaining multiple Linux servers used to host web applications.
+
+Instead of configuring each server manually over SSH, Ansible is used to define and apply a consistent desired state across all managed nodes.
+
+The current lab contains:
+
+* 1 Ansible Control Node
+* 2 Linux Managed Nodes
+* SSH key-based authentication
+* A dedicated `ansible` automation user
+* Centralized inventory management
+* Automated baseline server configuration
+* Centralized variables
+* Ansible Facts and conditions
+* Automated Linux user management
+
+## Architecture
+
+```text
+                    Ansible Control Node
+                            |
+                            |
+                     SSH / Ansible
+                            |
+                +-----------+-----------+
+                |                       |
+                v                       v
+             web01                    web02
+         192.168.1.20             192.168.1.30
+                |                       |
+             Ubuntu                  Ubuntu
+```
+
+Ansible connects to the managed nodes using the dedicated `ansible` user and performs privileged operations using `become`.
+
+```text
+Control Node
+     |
+     | SSH
+     v
+ansible user
+     |
+     | sudo / become
+     v
+Privileged Tasks
+```
+
+## Managed Nodes
+
+| Host  | IP Address   | Group      |
+| ----- | ------------ | ---------- |
+| web01 | 192.168.1.20 | webservers |
+| web02 | 192.168.1.30 | webservers |
+
+## Project Structure
+
+```text
+ansible-infrastructure-lab/
+├── ansible.cfg
+├── inventory/
+│   ├── hosts.ini
+│   └── group_vars/
+│       └── webservers.yml
+├── playbooks/
+│   ├── baseline.yml
+│   └── users.yml
+├── docs/
+├── .gitignore
+└── README.md
+```
+
+The structure will be expanded as additional automation capabilities are implemented.
+
+## Ansible Configuration
+
+The project uses a local `ansible.cfg` file so commands can be executed without repeatedly specifying the inventory path.
+
+Example:
+
+```ini
+[defaults]
+inventory = inventory/hosts.ini
+host_key_checking = True
+interpreter_python = auto_silent
+```
+
+This configuration:
+
+* Uses `inventory/hosts.ini` as the default inventory
+* Keeps SSH host key verification enabled
+* Allows Ansible to automatically discover the Python interpreter on managed nodes
+
+## Inventory
+
+Managed nodes are currently grouped as `webservers`.
+
+```ini
+[webservers]
+web01 ansible_host=192.168.1.20
+web02 ansible_host=192.168.1.30
+
+[webservers:vars]
+ansible_user=ansible
+ansible_ssh_private_key_file=~/.ssh/id_ed25519
+```
+
+The inventory provides logical names for the servers while Ansible connects to their actual IP addresses.
+
+## SSH and Privilege Escalation
+
+A dedicated `ansible` user is used on both managed nodes.
+
+SSH public-key authentication is configured between the Control Node and each Managed Node.
+
+Ansible connects as:
+
+```text
+ansible@web01
+ansible@web02
+```
+
+Administrative operations are performed using Ansible privilege escalation:
+
+```yaml
+become: true
+```
+
+This allows Ansible to connect using a non-root account while using `sudo` only when elevated privileges are required.
+
+## Connectivity Verification
+
+Basic connectivity can be tested using:
+
+```bash
+ansible all -m ping
+```
+
+Expected result:
+
+```text
+web01 | SUCCESS
+web02 | SUCCESS
+```
+
+Ansible Ping verifies more than basic network reachability. It confirms that Ansible can:
+
+* Resolve the managed host
+* Establish an SSH connection
+* Authenticate successfully
+* Execute an Ansible module
+* Use the remote Python interpreter
+
+Privilege escalation can be verified using:
+
+```bash
+ansible webservers -b -m command -a "whoami"
+```
+
+Expected output:
+
+```text
+root
+```
+
+## Baseline Server Configuration
+
+The `playbooks/baseline.yml` playbook standardizes the managed servers.
+
+Current baseline configuration includes:
+
+* Updating the APT package cache
+* Installing common administrative packages
+* Configuring the server timezone
+* Creating the application directory
+* Displaying selected Ansible Facts
+* Applying OS-family conditions
+
+Common packages currently include:
+
+```text
+curl
+git
+vim
+htop
+unzip
+```
+
+The application directory is:
+
+```text
+/opt/devops-app
+```
+
+## Variables
+
+Configuration values are separated from playbook logic using group variables.
+
+Variables for the `webservers` group are stored in:
+
+```text
+inventory/group_vars/webservers.yml
+```
+
+Current variables include:
+
+```yaml
+common_packages:
+  - curl
+  - git
+  - vim
+  - htop
+  - unzip
+
+server_timezone: Asia/Tehran
+
+app_directory: /opt/devops-app
+
+devops_user: devops
+```
+
+This allows configuration data to be changed without modifying the playbook logic.
+
+## Ansible Facts
+
+Ansible automatically collects information about managed nodes during the `Gathering Facts` stage.
+
+The project currently uses Facts such as:
+
+```text
+ansible_distribution
+ansible_distribution_version
+ansible_architecture
+ansible_os_family
+```
+
+Example:
+
+```yaml
+when: ansible_os_family == "Debian"
+```
+
+This prevents Debian-specific tasks such as APT package management from being executed on unsupported operating system families.
+
+Facts can also be inspected manually:
+
+```bash
+ansible web01 -m setup
+```
+
+Or filtered:
+
+```bash
+ansible web01 -m setup -a "filter=ansible_distribution*"
+```
+
+## User Management
+
+The `playbooks/users.yml` playbook currently manages a dedicated DevOps user.
+
+The managed account is defined through:
+
+```yaml
+devops_user: devops
+```
+
+The playbook ensures that:
+
+* The user exists
+* `/bin/bash` is configured as the login shell
+* A home directory exists
+* The user belongs to the `sudo` group
+* Existing supplementary groups are preserved
+* A secure `.ssh` directory exists
+
+The `.ssh` directory is configured with:
+
+```text
+Owner: devops
+Group: devops
+Mode: 0700
+```
+
+## Desired State and Idempotency
+
+The project uses Ansible modules to describe the desired state of the infrastructure rather than relying primarily on raw shell commands.
+
+For example:
+
+```yaml
+state: present
+```
+
+means that a resource must exist.
+
+During the first execution, Ansible may modify the server:
+
+```text
+changed > 0
+```
+
+Running the same playbook again after the desired state has been reached should result in:
+
+```text
+changed=0
+```
+
+This behavior demonstrates Ansible idempotency.
+
+The baseline playbook has been successfully tested with a second execution producing:
+
+```text
+web01 : changed=0 failed=0
+web02 : changed=0 failed=0
+```
+
+## Validation Workflow
+
+Before applying changes, playbooks can be validated using:
+
+```bash
+ansible-playbook playbooks/baseline.yml --syntax-check
+```
+
+A dry run can then be performed using:
+
+```bash
+ansible-playbook playbooks/baseline.yml --check
+```
+
+After validation, the playbook can be applied:
+
+```bash
+ansible-playbook playbooks/baseline.yml
+```
+
+The recommended workflow is:
+
+```text
+Write
+  |
+  v
+Syntax Check
+  |
+  v
+Check Mode
+  |
+  v
+Review
+  |
+  v
+Apply
+  |
+  v
+Verify
+```
+
+## Useful Ad-hoc Commands
+
+Test all managed nodes:
+
+```bash
+ansible all -m ping
+```
+
+Check the remote user:
+
+```bash
+ansible webservers -m command -a "whoami"
+```
+
+Test privilege escalation:
+
+```bash
+ansible webservers -b -m command -a "whoami"
+```
+
+Check hostnames:
+
+```bash
+ansible webservers -m command -a "hostname"
+```
+
+Inspect Ansible Facts:
+
+```bash
+ansible web01 -m setup
+```
+
+Inspect the managed DevOps user:
+
+```bash
+ansible webservers -m command -a "id devops"
+```
+
+Verify the application directory:
+
+```bash
+ansible webservers -m command -a "ls -ld /opt/devops-app"
+```
+
+## Current Project Status
+
+### Phase 1 — Connectivity and Inventory
+
+Completed.
+
+Implemented:
+
+* Ansible Control Node
+* Managed Node inventory
+* SSH key authentication
+* Dedicated Ansible user
+* `ansible.cfg`
+* Ansible Ping
+* Ad-hoc command testing
+* Privilege escalation verification
+
+### Phase 2 — Baseline Configuration
+
+Completed.
+
+Implemented:
+
+* APT cache management
+* Common package installation
+* Timezone configuration
+* Application directory management
+* Syntax validation
+* Check Mode
+* Idempotency verification
+
+### Phase 3 — Variables, Facts and User Management
+
+Completed.
+
+Implemented:
+
+* `group_vars`
+* Centralized configuration variables
+* Ansible Facts
+* Conditional execution with `when`
+* Linux user management
+* Group membership management
+* Home and SSH directory management
+
+## Roadmap
+
+The remaining project phases will implement:
+
+### Phase 4 — Web Server Automation
+
+* Nginx installation
+* Service management
+* Jinja2 templates
+* Nginx configuration
+* Handlers
+* Web application/page deployment
+* Host-specific content
+
+### Phase 5 — Roles and Project Refactoring
+
+* Ansible Roles
+* Reusable task structure
+* Defaults
+* Handlers
+* Templates
+* Separation of responsibilities
+* Main site playbook
+
+### Phase 6 — Security and Operational Controls
+
+* Basic firewall configuration
+* SSH-related configuration
+* Authorized SSH keys
+* Ansible Vault
+* Tags
+* Check Mode and Diff Mode
+* Safer production execution patterns
+
+### Phase 7 — Troubleshooting and Finalization
+
+* Controlled SSH failures
+* Inventory errors
+* YAML and variable errors
+* Permission failures
+* Nginx configuration failures
+* Verbose debugging
+* Documentation
+* Repository cleanup
+* Final GitHub-ready project structure
+
+## Key Concepts Practiced
+
+The project currently covers:
+
+* Control Node
+* Managed Node
+* Inventory
+* Host Groups
+* SSH Authentication
+* Ad-hoc Commands
+* Modules
+* Playbooks
+* Plays
+* Tasks
+* Privilege Escalation
+* Desired State
+* Idempotency
+* Variables
+* Group Variables
+* Facts
+* Conditions
+* User Management
+* File and Directory Management
+* Package Management
+* Check Mode
+
+Additional concepts will be added as the project progresses.
+
+## Security Notes
+
+Private keys, passwords and sensitive information must never be committed to Git.
+
+The repository ignores common sensitive file patterns through `.gitignore`.
+
+Secrets introduced later in the project will be managed using Ansible Vault.
+
+## Purpose
+
+This project is intended as a practical Ansible learning and portfolio project focused on realistic DevOps infrastructure automation rather than isolated command examples.
+
+The final repository will demonstrate how Ansible can be used to consistently configure, secure and manage multiple Linux servers from a centralized Control Node.
