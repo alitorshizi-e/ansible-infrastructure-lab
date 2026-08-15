@@ -1,0 +1,32 @@
+---
+- name: Configure baseline settings on Linux servers
+  hosts: webservers
+  become: true
+
+  tasks:
+    - name: Update apt package cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install common packages
+      ansible.builtin.apt:
+        name:
+          - curl
+          - git
+          - vim
+          - htop
+          - unzip
+        state: present
+
+    - name: Set timezone to Asia/Tehran
+      community.general.timezone:
+        name: Asia/Tehran
+
+    - name: Create application directory
+      ansible.builtin.file:
+        path: /opt/devops-app
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
