@@ -4,28 +4,33 @@
   become: true
 
   tasks:
+    - name: Display managed node information
+      ansible.builtin.debug:
+        msg:
+          - "Host: {{ inventory_hostname }}"
+          - "OS: {{ ansible_distribution }}"
+          - "Version: {{ ansible_distribution_version }}"
+          - "Architecture: {{ ansible_architecture }}"
+
     - name: Update apt package cache
       ansible.builtin.apt:
         update_cache: true
         cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
 
     - name: Install common packages
       ansible.builtin.apt:
-        name:
-          - curl
-          - git
-          - vim
-          - htop
-          - unzip
+        name: "{{ common_packages }}"
         state: present
+      when: ansible_os_family == "Debian"
 
-    - name: Set timezone to Asia/Tehran
+    - name: Configure server timezone
       community.general.timezone:
-        name: Asia/Tehran
+        name: "{{ server_timezone }}"
 
     - name: Create application directory
       ansible.builtin.file:
-        path: /opt/devops-app
+        path: "{{ app_directory }}"
         state: directory
         owner: root
         group: root
