@@ -1,0 +1,7 @@
+---
+nginx_package: nginx
+nginx_service: nginx
+nginx_port: 80
+nginx_web_root: /var/www/devops-app
+nginx_site_name: devops-lab
+lab_environment: development

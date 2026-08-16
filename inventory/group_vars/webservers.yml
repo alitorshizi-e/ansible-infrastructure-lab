@@ -1,20 +1,4 @@
 ---
-common_packages:
-  - curl
-  - git
-  - vim
-  - htop
-  - unzip
-
 server_timezone: Asia/Tehran
 
-app_directory: /opt/devops-app
-
-devops_user: devops
-
-nginx_package: nginx
-nginx_service: nginx
-nginx_port: 80
-nginx_web_root: /var/www/devops-app
-nginx_site_name: devops-lab
 lab_environment: development

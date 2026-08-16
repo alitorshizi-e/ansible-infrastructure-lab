@@ -1,0 +1,21 @@
+---
+- name: Configure complete web server infrastructure
+  hosts: webservers
+  become: true
+
+  roles:
+    - role: common
+      tags:
+        - common
+
+    - role: users
+      tags:
+        - users
+
+    - role: nginx
+      tags:
+        - nginx
+
+    - role: security
+      tags:
+        - security

@@ -1,0 +1,11 @@
+---
+common_packages:
+  - curl
+  - git
+  - vim
+  - htop
+  - unzip
+
+server_timezone: UTC
+
+app_directory: /opt/devops-app

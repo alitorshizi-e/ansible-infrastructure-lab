@@ -1,0 +1,23 @@
+---
+- name: Create DevOps user
+  ansible.builtin.user:
+    name: "{{ devops_user }}"
+    shell: /bin/bash
+    create_home: true
+    groups: sudo
+    append: true
+    state: present
+
+- name: Create SSH directory for DevOps user
+  ansible.builtin.file:
+    path: "/home/{{ devops_user }}/.ssh"
+    state: directory
+    owner: "{{ devops_user }}"
+    group: "{{ devops_user }}"
+    mode: "0700"
+
+- name: Install SSH public key for DevOps user
+  ansible.posix.authorized_key:
+    user: "{{ devops_user }}"
+    state: present
+    key: "{{ lookup('ansible.builtin.file', devops_public_key_path) }}"

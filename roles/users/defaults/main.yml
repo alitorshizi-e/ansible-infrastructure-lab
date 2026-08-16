@@ -1,0 +1,4 @@
+---
+devops_user: devops
+
+devops_public_key_path: "{{ lookup('ansible.builtin.env', 'HOME') + '/.ssh/id_ed25519.pub' }}"

@@ -1,0 +1,72 @@
+---
+- name: Install Nginx
+  ansible.builtin.apt:
+    name: "{{ nginx_package }}"
+    state: present
+    update_cache: true
+  when: ansible_os_family == "Debian"
+
+- name: Ensure web root directory exists
+  ansible.builtin.file:
+    path: "{{ nginx_web_root }}"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: "0755"
+
+- name: Deploy web page
+  ansible.builtin.template:
+    src: index.html.j2
+    dest: "{{ nginx_web_root }}/index.html"
+    owner: www-data
+    group: www-data
+    mode: "0644"
+
+- name: Deploy Nginx site configuration
+  ansible.builtin.template:
+    src: nginx-site.conf.j2
+    dest: "/etc/nginx/sites-available/{{ nginx_site_name }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Validate Nginx configuration
+    - Reload Nginx
+
+- name: Disable default Nginx site
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify:
+    - Validate Nginx configuration
+    - Reload Nginx
+
+- name: Enable DevOps lab site
+  ansible.builtin.file:
+    src: "/etc/nginx/sites-available/{{ nginx_site_name }}"
+    dest: "/etc/nginx/sites-enabled/{{ nginx_site_name }}"
+    state: link
+  notify:
+    - Validate Nginx configuration
+    - Reload Nginx
+
+- name: Ensure Nginx is enabled and running
+  ansible.builtin.service:
+    name: "{{ nginx_service }}"
+    state: started
+    enabled: true
+
+- name: Run notified handlers before verification
+  ansible.builtin.meta: flush_handlers
+
+- name: Verify Nginx locally
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ nginx_port }}/"
+    status_code: 200
+  register: nginx_check
+  when: not ansible_check_mode
+
+- name: Display Nginx verification result
+  ansible.builtin.debug:
+    msg: "{{ inventory_hostname }} returned HTTP {{ nginx_check.status }}"
+  when: not ansible_check_mode
